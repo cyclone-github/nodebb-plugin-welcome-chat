@@ -1,0 +1,43 @@
+{
+  "name": "nodebb-plugin-welcome-chat",
+  "version": "0.4.0",
+  "description": "Automatically greet new NodeBB members in a configurable private group chat with forum staff.",
+  "main": "library.js",
+  "type": "module",
+  "keywords": [
+    "nodebb",
+    "nodebb-plugin",
+    "welcome",
+    "onboarding",
+    "chat",
+    "registration",
+    "moderation"
+  ],
+  "author": "cyclone",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check library.js && node --check lib/welcome.js && node --check public/lib/admin.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "nbbpm": {
+    "compatibility": "^4.14.0"
+  },
+  "files": [
+    "library.js",
+    "lib/",
+    "plugin.json",
+    "public/",
+    "templates/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cyclone-github/nodebb-plugin-welcome-chat.git"
+  },
+  "homepage": "https://github.com/cyclone-github/nodebb-plugin-welcome-chat#readme",
+  "bugs": {
+    "url": "https://github.com/cyclone-github/nodebb-plugin-welcome-chat/issues"
+  }
+}
