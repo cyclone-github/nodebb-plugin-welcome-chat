@@ -1,22 +1,19 @@
 # NodeBB Welcome Chat
 
-A configurable NodeBB plugin that automatically starts **one private welcome group chat** for a new member. The chat includes the member and the current members of selected staff groups, and sends an editable greeting from a staff account.
+A configurable NodeBB plugin that automatically starts **a private welcome group chat** for a new member. The chat includes the member and the current members of selected staff groups, and sends an editable greeting from a staff account.
 
-The default message and title use NodeBB's **configured forum name**. No particular community, rules page, or staff account is hardcoded.
+The default message and title use NodeBB's **configured forum name**.
 
 **Requirements:** NodeBB 4.14.x or later in the 4.x series, Node.js 22 or later. The declared NodeBB compatibility range is `^4.14.0`. This plugin uses NodeBB 4.14+ ESM integration and internal messaging APIs. Test against your installed NodeBB release before deploying to a production forum.
 
 ## Features
 
-- Automatic private welcome group chat for **new registrations**, not existing members
+- Automatic private welcome group chat for **new registrations**
 - Delivery modes: on account creation, after NodeBB's built-in administrator approval (when enabled), after email verification, or after both (**default**)
 - Click-to-select staff groups loaded from your NodeBB installation, including `administrators`, `Global Moderators`, and any custom groups, plus optional staff user IDs
 - Optional preferred sending staff user ID
 - Editable chat title and message body, with `{username}`, `{forumName}`, and `{rulesUrl}` variables
-- Optional HTTPS rules URL, **not required** by the default template
-- NodeBB chat notifications and saved messages
-- Persistent sent state and best-effort cross-worker duplicate protection
-- Disabled by default until enabled in the ACP
+- Optional rules URL can be included in the message
 
 ## Install
 
