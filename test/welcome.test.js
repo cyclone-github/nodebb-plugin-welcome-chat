@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { welcomeNewUser, processWelcomeEvent, parseGroups, parseUids, DEFAULT_MESSAGE, DEFAULT_ROOM_TITLE, DEFAULT_RULES_URL } from '../lib/welcome.js';
+import { getSelectableStaffGroups } from '../lib/group-options.js';
 
 function fixture({
   settings = { enabled: 'on' },
@@ -77,12 +78,22 @@ test('ACP defaults match runtime defaults and do not include a rules URL', () =>
   assert.equal(title?.replaceAll('&#123;', '{').replaceAll('&#125;', '}'), DEFAULT_ROOM_TITLE);
   assert.equal(DEFAULT_RULES_URL, '');
   assert.match(tpl, /id="rulesUrl"[^>]*placeholder=/);
+  assert.match(tpl, /<option value="approved_verified" selected>/);
+  assert.doesNotMatch(tpl, /<option value="created" selected>/);
+  assert.doesNotMatch(tpl, /Disabled until enabled and saved below/);
+  assert.doesNotMatch(tpl, /Staff membership is resolved when a user registers/);
+  assert.match(tpl, /data-group-name="{staffGroups.name}"/);
+  assert.match(tpl, /name="groupNames"/);
+  assert.match(tpl, /Forum rules: &#123;rulesUrl&#125;/);
 });
 
 test('parse and sanitize selected groups and UID lists', () => {
   assert.deepEqual(parseGroups('admins, mods\nadmins'), ['admins', 'mods']);
   assert.deepEqual(parseGroups(''), []);
   assert.deepEqual(parseGroups(undefined), ['administrators', 'Global Moderators']);
+  assert.deepEqual(parseGroups('["Global Moderators","My Staff, Local","Global Moderators"]'), ['Global Moderators', 'My Staff, Local']);
+  assert.deepEqual(parseGroups('[]'), []);
+  assert.deepEqual(parseGroups('[bad-json'), []);
   assert.deepEqual(parseUids('5, 10; invalid -1 5 10'), [5, 10]);
 });
 
@@ -103,7 +114,7 @@ test('create private room with member and de-duplicated current staff; notify al
   assert.equal(room.data.roomName, 'Welcome to Example Community');
   assert.deepEqual(room.data.uids, [90, 3, 4]);
   assert.match(f.calls.sent[0].content, /newmember/);
-  assert.match(f.calls.sent[0].content, /Welcome to Example Community, newmember!/);
+  assert.match(f.calls.sent[0].content, /Welcome to Example Community!/);
   assert.doesNotMatch(f.calls.sent[0].content, /https?:\/\//);
   assert.equal(f.calls.notified.length, 1);
   assert.equal(f.calls.notified[0][0], 2);
@@ -182,14 +193,14 @@ test('generic title and message reflect the configured forum name', async () => 
   const result = await welcomeNewUser(data(90, 'Taylor'), f.deps);
   assert.equal(result.status, 'sent');
   assert.equal(f.calls.created[0].data.roomName, 'Hello Taylor from Example Community');
-  assert.match(f.calls.sent[0].content, /Welcome to Example Community, Taylor!/);
+  assert.match(f.calls.sent[0].content, /Hi Taylor,\n\nWelcome to Example Community!/);
 });
 
 test('optional rules URL can be omitted safely', async () => {
   const f = fixture({ settings: { enabled: 'on', rulesUrl: '' } });
   const result = await welcomeNewUser(data(), f.deps);
   assert.equal(result.status, 'sent');
-  assert.match(f.calls.sent[0].content, /Thanks for joining our community/);
+  assert.match(f.calls.sent[0].content, /Thanks for joining!/);
 });
 
 test('using a missing rules URL in a message fails before creating a room', async () => {
@@ -316,9 +327,14 @@ test('unknown mode fails closed instead of sending early', async () => {
   assert.equal(f.calls.sent.length, 0);
 });
 
-test('new mode omitted retains older plugin immediate delivery behavior', async () => {
-  const f = fixture({ settings: { enabled: 'on' } });
-  assert.equal((await processWelcomeEvent('created', data(), f.deps)).status, 'sent');
+test('missing delivery mode now defaults to approval and verified email', async () => {
+  const f = fixture({ settings: { enabled: 'on' }, verifiedUsers: [] });
+  assert.equal((await processWelcomeEvent('created', data(), f.deps)).status, 'awaiting-email-verification');
+  assert.equal(f.calls.created.length, 0);
+  assert.equal(f.store.get('welcome-chat:uid:90').registered, 1);
+  f.deps.user.getUserField = async (uid, field) => field === 'email:confirmed' ? 1 : `account${uid}`;
+  assert.equal((await processWelcomeEvent('email-confirmed', { uid: 90 }, f.deps)).status, 'sent');
+  assert.equal(f.calls.created.length, 1);
 });
 
 
@@ -359,4 +375,53 @@ test('reject too-long chat before creating a room', async () => {
   assert.equal((await welcomeNewUser(data(), f.deps)).status, 'message-too-long');
   assert.equal(f.calls.created.length, 0);
   assert.equal(f.store.has('welcome-chat:lock:90'), false);
+});
+
+
+test('ACP picker includes system staff and real custom groups, without membership and privilege groups', async () => {
+  let called;
+  const options = await getSelectableStaffGroups({
+    systemGroups: ['registered-users', 'verified-users', 'administrators', 'Global Moderators', 'banned-users'],
+    ephemeralGroups: ['guests', 'spiders'],
+    isPrivilegeGroup: name => name.includes(':privileges:'),
+    getNonPrivilegeGroups: async (...args) => {
+      called = args;
+      return [
+        { name: 'The Helpers' }, { name: 'registered-users' },
+        { name: 'Global Moderators' }, { name: 'guests' },
+        { name: 'Staff, Regional' }, { name: 'cid:10:privileges:mods' },
+        { name: 'Team A' }, { name: 'Team A' }, { name: 'banned-users' },
+      ];
+    },
+  });
+  assert.deepEqual(called, ['groups:createtime', 0, -1, { ephemeral: false }]);
+  assert.deepEqual(options.map(x => x.name), ['administrators', 'Global Moderators', 'Staff, Regional', 'Team A', 'The Helpers']);
+});
+
+test('saved legacy group names remain compatible, including custom groups', async () => {
+  const f = fixture({
+    settings: { enabled: 'on', groupNames: 'administrators\nhelpers' },
+    members: { administrators: ['2'], helpers: ['5', '6'] },
+  });
+  assert.equal((await welcomeNewUser(data(), f.deps)).status, 'sent');
+  assert.deepEqual(f.calls.groupLookups, ['administrators', 'helpers']);
+});
+
+test('group names containing commas can be selected and delivered via JSON', async () => {
+  const f = fixture({
+    settings: { enabled: 'on', groupNames: '["Staff, Regional"]' },
+    members: { 'Staff, Regional': ['7'] },
+  });
+  assert.equal((await welcomeNewUser(data(), f.deps)).status, 'sent');
+  assert.deepEqual(f.calls.groupLookups, ['Staff, Regional']);
+});
+
+test('ACP group control is button-based with saved hidden groupNames input', () => {
+  const tpl = readFileSync(new URL('../templates/admin/plugins/welcome-chat.tpl', import.meta.url), 'utf8');
+  const js = readFileSync(new URL('../public/lib/admin.js', import.meta.url), 'utf8');
+  assert.match(tpl, /type="hidden" id="groupNames" name="groupNames"/);
+  assert.match(tpl, /aria-pressed="false"/);
+  assert.match(js, /load\('welcome-chat', form, \(err\) =>/);
+  assert.match(js, /input\.val\(JSON\.stringify\(selected\)\)/);
+  assert.match(js, /save\('welcome-chat', form\)/);
 });

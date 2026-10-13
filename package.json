@@ -1,6 +1,6 @@
 {
   "name": "nodebb-plugin-welcome-chat",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Automatically greet new NodeBB members in a configurable private group chat with forum staff.",
   "main": "library.js",
   "type": "module",
@@ -17,7 +17,7 @@
   "license": "MIT",
   "scripts": {
     "test": "node --test",
-    "check": "node --check library.js && node --check lib/welcome.js && node --check public/lib/admin.js"
+    "check": "node --check library.js && node --check lib/welcome.js && node --check lib/group-options.js && node --check public/lib/admin.js"
   },
   "engines": {
     "node": ">=22"

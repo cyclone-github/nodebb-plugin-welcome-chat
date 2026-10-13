@@ -9,8 +9,8 @@ The default message and title use NodeBB's **configured forum name**. No particu
 ## Features
 
 - Automatic private welcome group chat for **new registrations**, not existing members
-- Delivery modes: on account creation, after NodeBB's built-in administrator approval (when enabled), after email verification, or after both
-- Current staff from `administrators`, `Global Moderators`, optional custom groups, and optional additional staff user IDs
+- Delivery modes: on account creation, after NodeBB's built-in administrator approval (when enabled), after email verification, or after both (**default**)
+- Click-to-select staff groups loaded from your NodeBB installation, including `administrators`, `Global Moderators`, and any custom groups, plus optional staff user IDs
 - Optional preferred sending staff user ID
 - Editable chat title and message body, with `{username}`, `{forumName}`, and `{rulesUrl}` variables
 - Optional HTTPS rules URL, **not required** by the default template
@@ -38,7 +38,7 @@ npm install /path/to/nodebb-plugin-welcome-chat
 ./nodebb restart
 ```
 
-Open **ACP -> Plugins -> Welcome Chat**, at `/admin/plugins/welcome-chat`, to configure it. Select the delivery mode, review the staff groups and message, then enable and save. Only newly created accounts can receive a welcome.
+Open **ACP -> Plugins -> Welcome Chat**, at `/admin/plugins/welcome-chat`, to configure it. Choose the delivery mode, click the staff groups to include (click again to remove), edit the message if desired, then enable and save. Only newly created accounts can receive a welcome.
 
 ## Default welcome chat
 
@@ -47,14 +47,14 @@ Open **ACP -> Plugins -> Welcome Chat**, at `/admin/plugins/welcome-chat`, to co
 **Message:**
 
 ```text
-Welcome to {forumName}, {username}!
+Hi {username},
 
-Thanks for joining our community.
+Welcome to {forumName}! We're glad you're here.
 
-This private chat includes members of the forum team. If you have questions,
-you can reply here when your account has permission to send chats.
+If you have any questions, feel free to reply to this chat.
+Our team will be happy to help.
 
-We look forward to seeing you around!
+Thanks for joining!
 ```
 
 NodeBB's configured forum name replaces `{forumName}`. Administrators can edit the title and entire message in the ACP. Changes apply to future welcome chats; they do not rewrite messages already sent.
@@ -67,20 +67,22 @@ NodeBB's configured forum name replaces `{forumName}`. Administrators can edit t
 | `{forumName}` | Forum name from NodeBB settings |
 | `{rulesUrl}` | Administrator-supplied HTTPS rules URL (optional) |
 
-There is deliberately no default rules URL. To include a rules link, configure **Forum rules URL** in the ACP and add a line such as `Rules: {rulesUrl}` to the message. If `{rulesUrl}` appears in a template but no URL is configured, delivery fails with a logged error rather than sending an empty or incorrect URL. The configured URL must begin with `https://`.
+The ACP explains how to use all three placeholders, including an example of linking to the rules page. There is deliberately no default rules URL. To include a rules link, configure **Forum rules URL** in the ACP and add a line such as `Rules: {rulesUrl}` to the message. If `{rulesUrl}` appears in a template but no URL is configured, delivery fails with a logged error rather than sending an empty or incorrect URL. The configured URL must begin with `https://`.
 
 ## Settings
 
 | Setting | Behavior |
 | --- | --- |
 | Enable automatic welcome chats | Off until deliberately enabled/saved |
-| Send welcome DM | Default: when the account is created |
-| Staff groups | Default: `administrators` and `Global Moderators`, one per line |
+| Send welcome DM | Default: after both approval and email verification |
+| Staff groups | Default: `administrators` and `Global Moderators`; select other existing groups by clicking them |
 | Additional staff user IDs | Optional comma/space-separated UIDs |
 | Sender user ID | Optional UID of a selected staff member |
 | Chat title | Default: `Welcome to {forumName}` |
 | Forum rules URL | Optional HTTPS URL; initially empty |
 | Message body | Editable default text shown above |
+
+The staff group picker excludes built-in general membership groups such as `registered-users`, as well as ephemeral and privilege groups. Selecting one or more custom groups adds their members to the chat. The original `groupNames` storage key is preserved: pre-0.4.1 comma- or newline-separated lists continue to work, while new selections save as a JSON list to support group names containing commas. Groups that no longer exist are shown as `(not found)` so you can deselect them.
 
 The sending account must be a selected participant. If the preferred sender is missing, the plugin chooses the lowest-numbered administrator in the selected group, or otherwise the lowest-numbered staff member.
 
@@ -100,7 +102,7 @@ The plugin tracks new accounts at creation time. Email-confirmed events from acc
 3. The plugin refuses rooms with more than 100 staff participants or rooms exceeding NodeBB's configured participant limit. A selected group with more than 100 members fails closed.
 4. Multiple workers use a best-effort expiring database lock. Exactly-once delivery is **not** guaranteed across crashes or an expired lease. A saved-message checkpoint reduces duplicate notifications on retries.
 5. Failed deliveries are logged and do **not** block registration. There is no automatic retry queue or backfill of existing accounts. A user whose delivery failed may need an explicit retry mechanism outside the plugin.
-6. Upgrading an existing installation retains **saved ACP settings**, including any previously customized room title, message, and rules URL. Changing the packaged defaults does **not** overwrite settings already stored in NodeBB. Review existing settings after upgrading.
+6. Upgrading an existing installation retains **saved ACP settings**, including any previously customized room title, message, rules URL, groups, and delivery mode. Changing the packaged defaults does **not** overwrite settings already stored in NodeBB. Review existing settings after upgrading. In particular, an explicitly saved "When account is created" setting will continue to send at creation even though the fresh default is now "After both".
 
 ## Test
 

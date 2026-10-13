@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1
+
+- Rewrite ACP descriptions to use shorter, more natural wording and remove unnecessary status notices.
+- Make "After both approval and email verification" the default delivery mode for new installations, including the server-side fallback. Explicitly saved delivery modes are unchanged.
+- Replace the staff groups textarea with an accessible click-to-select/toggle picker populated from existing NodeBB groups. General membership, privilege, and ephemeral groups are not offered.
+- Preserve the `groupNames` setting and support both existing line-separated values and new JSON selections (including groups with commas in their names).
+- Update the editable default greeting and add a concise placeholder guide and example in the ACP.
+- Add group-picker tests and update the documentation. Existing saved settings and chat history are preserved.
+
 ## 0.4.0
 
 - Make default welcome chat message and title community-neutral and use `{forumName}` dynamically.

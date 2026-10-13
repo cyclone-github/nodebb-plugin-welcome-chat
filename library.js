@@ -1,4 +1,5 @@
 import { processWelcomeEvent } from './lib/welcome.js';
+import { getSelectableStaffGroups } from './lib/group-options.js';
 
 // NodeBB v4.14+ exposes its internal libraries to ESM plugins via nodebb.require().
 const routeHelpers = nodebb.require('./src/routes/helpers');
@@ -13,9 +14,13 @@ export function init({ router }) {
   routeHelpers.setupAdminPageRoute(
     router,
     '/admin/plugins/welcome-chat',
-    (req, res) => res.render('admin/plugins/welcome-chat', {
-      title: 'Welcome Chat',
-    })
+    async (req, res) => {
+      const staffGroups = await getSelectableStaffGroups(groups);
+      res.render('admin/plugins/welcome-chat', {
+        title: 'Welcome Chat',
+        staffGroups,
+      });
+    }
   );
 }
 
